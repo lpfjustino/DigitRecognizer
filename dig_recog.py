@@ -15,7 +15,7 @@ def plot(x_p, y_p):
         plt.title(y_p[i,0])
         plt.waitforbuttonpress()
 
-def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 100, train_portion = 0.7):
+def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 1000, train_portion = 0.7):
     # Setting train set
     data_set = pd.read_csv('train.csv', sep=',', header=0).values
 
@@ -26,6 +26,7 @@ def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 100, train
     train_labels = data_set[:train_idx, :1]
     norm_train_labels = [digit_to_vector(digit, 9) for digit in train_labels]
 
+    # Showing images and labels
     # for i, p in enumerate(data_set[:train_idx,1:]):
     #     plt.imshow(p.reshape(28,28), cmap='gray')
     #     # print(p.reshape(28,28))
@@ -38,13 +39,15 @@ def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 100, train
     model = mlp.Model(28*28, hidden_length, 10)
     model.backpropagation(norm_train_images, norm_train_labels, threshold)
 
-    # Testing
-    # test_set = pd.read_csv('test.csv', sep=',', header=0).values
-    # norm_test_set = np.divide(test_set, 255)
-    #
-    # for p in norm_test_set:
-    #     x_p = p[:]
-    #     obtained_class = model.classify(x_p)
+    ''' Keggle submission testing
+    Testing
+    test_set = pd.read_csv('test.csv', sep=',', header=0).values
+    norm_test_set = np.divide(test_set, 255)
+
+    for p in norm_test_set:
+        x_p = p[:]
+        obtained_class = model.classify(x_p)
+    '''
 
     test_idx = math.floor((1-train_portion)*n_rows)
     test_set = data_set[train_idx:train_idx+test_idx,1:]
@@ -62,7 +65,7 @@ def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 100, train
         if expected_class == obtained_class:
             count += 1
 
-    print('>', count/len(norm_test_set))
+    print('Taxa de acerto: ', count/len(norm_test_set))
 
 def digit_to_vector(n, d):
     parsed_digit = np.zeros(d+1)
