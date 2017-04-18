@@ -15,7 +15,8 @@ def plot(x_p, y_p):
         plt.title(y_p[i,0])
         plt.waitforbuttonpress()
 
-def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 1000, train_portion = 0.7):
+
+def recognize(hidden_length = 30, eta = 0.1, threshold = 5e-3, n_rows = 1000, train_portion = 0.7):
     # Setting train set
     data_set = pd.read_csv('train.csv', sep=',', header=0).values
 
@@ -23,21 +24,22 @@ def recognize(hidden_length = 4, eta = 0.1, threshold = 0.1, n_rows = 1000, trai
 
     train_set = data_set[:train_idx, 1:]
     norm_train_images = train_set / 255
+    #print(norm_train_images[0])
     train_labels = data_set[:train_idx, :1]
     norm_train_labels = [digit_to_vector(digit, 9) for digit in train_labels]
 
     # Showing images and labels
     # for i, p in enumerate(data_set[:train_idx,1:]):
     #     plt.imshow(p.reshape(28,28), cmap='gray')
-    #     # print(p.reshape(28,28))
-    #     # plt.title(data_set[i,0])
+    #     print(p.reshape(28,28))
+    #     plt.title(data_set[i,0])
     #     plt.title(norm_train_labels[i])
     #     plt.show()
-    #     time.sleep(3)
+    #     time.sleep(10)
 
     # Training neural network
     model = mlp.Model(28*28, hidden_length, 10)
-    model.backpropagation(norm_train_images, norm_train_labels, threshold)
+    model.backpropagation(norm_train_images, norm_train_labels, eta, threshold)
 
     ''' Keggle submission testing
     Testing
@@ -75,4 +77,8 @@ def digit_to_vector(n, d):
 def vector_to_digit(n):
     return np.argmax(n)
 
+start_time = time.time()
 recognize()
+end_time = time.time()
+duration = (end_time - start_time) / (60) # in minutes
+print(duration)

@@ -55,7 +55,7 @@ class Forward:
 
 
 class Model:
-    def __init__(self, i_neurons=2, h_neurons=2, o_neurons=1):
+    def __init__(self, i_neurons=2, h_neurons=20, o_neurons=1):
         self.i_neurons = i_neurons
         self.h_neurons = h_neurons
         self.o_neurons = o_neurons
