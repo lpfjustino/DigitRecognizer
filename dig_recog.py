@@ -2,10 +2,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from numpy.linalg import eigh
 
 import mlp
 
 import time
+
 
 def plot(data_set, train_idx, norm_train_labels):
     for i, p in enumerate(data_set[:train_idx,1:]):
@@ -15,6 +17,7 @@ def plot(data_set, train_idx, norm_train_labels):
         plt.title(norm_train_labels[i])
         plt.show()
         time.sleep(10)
+
 
 def normalized_mnist_train_data(data_set, n_rows = 500, train_portion = 0.7):
     train_idx = math.floor(train_portion * n_rows)
@@ -65,22 +68,61 @@ def digit_to_vector(n, d):
     parsed_digit[n] = 1
     return parsed_digit
 
+
+# Auxiliary function that casts a binary array[10] to a digit (0-9)
 def vector_to_digit(n):
     return np.argmax(n)
 
 
-def mnist_recognize(hidden_length = 10, eta = 0.1, threshold = 0.05):
+def dimensionality_reduce(data, n_components=100):
+    # Rescale the data
+    mi = data.mean(axis=0)
+    data -= data.mean(axis=0)
+    # data /= data.std(axis=0)
+
+    cov_mat = np.cov(data, rowvar=False)
+    w, v = eigh(cov_mat)
+
+    # Sorting eigenvalues on descending order
+    idx = np.argsort(abs(w))[::-1]
+
+    # Sort eigenvectors and eigenvalues according to the same index
+    v = v[:,idx]
+    w = w[idx]
+
+    v = v[:, :n_components]
+
+    # for i in range(w.shape[0]):
+    #     print(abs(w[i])/sum(abs(w))*100)
+
+    # pc = w[w > 0.005]
+    # print(pc, len(pc))
+
+    data += mi
+
+    # Reduced dimensionality data
+    pc = data[:,idx[:n_components]]
+
+    return pc, idx
+
+
+def mnist_recognize(hidden_length = 10, eta = 0.1, threshold = 2e-2, n_rows = 500):
     # Reading train set
     data_set = pd.read_csv('train.csv', sep=',', header=0).values
 
-    norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set)
+    # Normalizing images to greyscale and labels to vectors
+    norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows)
+
+    # Calculating principal components
+    n_components = 250
+    norm_train_images, features = dimensionality_reduce(data = norm_train_images, n_components =  n_components)
 
     # Showing images and labels
     # plot(data_set, train_idx, norm_train_labels)
 
     # Training neural network
-    model = mlp.Model(28*28, hidden_length, 10)
-    model.backpropagation(norm_train_images, norm_train_labels, eta, threshold)
+    model = mlp.Model(i_neurons = n_components, h_neurons = hidden_length, o_neurons = 10)
+    model.backpropagation(X = norm_train_images, Y = norm_train_labels, eta = eta, threshold = threshold)
 
     ''' Keggle submission testing
     Testing
@@ -92,7 +134,11 @@ def mnist_recognize(hidden_length = 10, eta = 0.1, threshold = 0.05):
         obtained_class = model.classify(x_p)
     '''
 
-    norm_test_images, norm_test_labels = normalized_mnist_test_data(data_set)
+    norm_test_images, norm_test_labels = normalized_mnist_test_data(data_set, n_rows = n_rows)
+
+    # Reducing dimensionality for the train set
+    norm_test_images, _ = dimensionality_reduce(norm_test_images, n_components)
+
     _, accuracy = mnist_test(model, norm_test_images, norm_test_labels)
 
 
@@ -102,7 +148,7 @@ def mnist_recognize(hidden_length = 10, eta = 0.1, threshold = 0.05):
 
 
 start_time = time.time()
-mnist_recognize()
+mnist_recognize(n_rows = 500)
 end_time = time.time()
 duration = (end_time - start_time) / (60) # in minutes
 print(duration)
