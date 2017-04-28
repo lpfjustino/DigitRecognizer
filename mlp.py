@@ -141,4 +141,4 @@ class Model:
                     neuron.theta = weights[len(weights) - 1]
 
             sqerror /= len(X)
-            print(sqerror)
+            #print(sqerror)
