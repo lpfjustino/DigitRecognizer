@@ -106,25 +106,23 @@ def vector_to_digit(n):
 def pca(data):
     # Rescale the data
     mi = data.mean(axis=0)
-    data -= data.mean(axis=0)
+    data -= mi
     # data /= data.std(axis=0)
 
     cov_mat = np.cov(data, rowvar=False)
     w, v = eigh(cov_mat)
 
     # Sorting eigenvalues on descending order
-    idx = np.argsort(abs(w))[::-1]
+    idx = np.argsort(w)[::-1]
 
     # Sort eigenvectors and eigenvalues according to the same index
     v = v[:,idx]
     w = w[idx]
 
     # Projection of the data to the new space
-    # print(pc.shape, v.shape)
     rescaled_data = np.dot(data, v)
-    # print(pc, pc.shape)
 
-    return rescaled_data, w, v, idx
+    return rescaled_data, w, v
 
 
 '''
@@ -135,39 +133,30 @@ def pca(data):
          Returns:
             pc : the new data_set containing only the principal components of the given observations
 '''
-def dimensionality_reduce(data, n_components = 100, feat_v = None, features = None):
-    if features == None and feat_v == None:
-        rescaled_data, _, v, feat = pca(data)
+def dimensionality_reduce(data, n_components = 100, feat_v = None):
+    if feat_v is None:
+        rescaled_data, _, v = pca(data)
+        pc = rescaled_data[:, :n_components]
 
     else:
-        rescaled_data = np.dot(data, feat_v)
+        mi = data.mean(axis=0)
+        data -= mi
+
         v = feat_v
-        feat = features
+        pc = np.dot(data, v)[:, :n_components]
 
-    # Representatividade
-    # for i in range(w.shape[0]):
-    #     print(abs(w[i])/sum(abs(w))*100)
-
-    # Limite de importância
-    # pc = w[w > 0.005]
-    # print(pc, len(pc))
-
-    # Reduce dimensionality
-    #v = v[:, :n_components]
-    pc = rescaled_data[:, feat[:n_components]]
-
-    return pc, v, feat
+    return pc, v
 
 
-def mnist_recognize(n_components, hidden_length = 10, eta = 0.1, threshold = 2e-2, n_rows = 500):
+def mnist_recognize(n_components, hidden_length = 10, eta = 0.01, threshold = 2e-2, n_rows = 500):
     # Reading train set
     data_set = pd.read_csv('train.csv', sep=',', header=0, dtype=np.float64).values
 
-    # Normalizing images to greyscale and labels to vectors
+    # Normalizing images to grayscale and labels to vectors
     norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows)
 
     # Calculating principal components
-    norm_train_images, feat_v, features = dimensionality_reduce(data = norm_train_images, n_components =  n_components)
+    norm_train_images, feat_v = dimensionality_reduce(data = norm_train_images, n_components =  n_components)
 
     # Showing images and labels
     # plot(data_set, train_idx, norm_train_labels)
@@ -189,7 +178,7 @@ def mnist_recognize(n_components, hidden_length = 10, eta = 0.1, threshold = 2e-
     norm_test_images, norm_test_labels = normalized_mnist_test_data(data_set, n_rows = n_rows)
 
     # Reducing dimensionality for the train set
-    norm_test_images,_,_ = dimensionality_reduce(norm_test_images, n_components, feat_v, features)
+    norm_test_images,_ = dimensionality_reduce(norm_test_images, n_components, feat_v)
 
     _, accuracy = mnist_test(model, norm_test_images, norm_test_labels)
 
@@ -197,11 +186,11 @@ def mnist_recognize(n_components, hidden_length = 10, eta = 0.1, threshold = 2e-
 
 
 def benchmark():
-    nc = 400
+    nc = 100
     while nc > 0:
         print('N components: ', nc)
         start_time = time.time()
-        accuracy = mnist_recognize(n_components= nc, hidden_length= 10, n_rows = 500)
+        accuracy = mnist_recognize(n_components= nc, hidden_length= 10, eta=0.01, n_rows = 1000, threshold=5e-2)
         end_time = time.time()
         duration = (end_time - start_time) / (60) # in minutes
         print('Taxa de acerto: ', accuracy)
