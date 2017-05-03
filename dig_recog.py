@@ -9,12 +9,20 @@ import mlp
 import time
 
 
-def plot(data_set, train_idx, norm_train_labels):
-    for i, p in enumerate(data_set[:train_idx,1:]):
+'''
+    Auxiliary function that plots every example on the dataset with their respective labels
+        Parameters:
+            data_set : (M x 28*28) matrix containing M rows of images
+            norm_labels : a M-long vector containing the data_set labels
+        Returns:
+            -
+'''
+def plot(data_set, norm_labels):
+    for i, p in enumerate(data_set[:, 1:]):
         plt.imshow(p.reshape(28,28), cmap='gray')
         print(p.reshape(28,28))
         plt.title(data_set[i,0])
-        plt.title(norm_train_labels[i])
+        plt.title(norm_labels[i])
         plt.show()
         time.sleep(10)
 
@@ -33,18 +41,24 @@ def normalized_mnist_train_data(data_set, n_rows = 500, train_portion = 0.7):
     return norm_train_images, norm_train_labels
 
 
-def normalized_mnist_test_data(data_set, n_rows = 500, train_portion = 0.7):
-    # Calculating test variables
-    train_idx = math.floor(train_portion * n_rows)
-    test_idx = math.floor((1-train_portion)*n_rows)
+def normalized_mnist_test_data(data_set, n_rows = 500, train_portion = 0.7, validation=True):
+    # We don't have labels or train/test portions on production execution
+    if validation == False:
+        norm_test_images = np.divide(data_set, 255)
+        norm_test_labels = None
 
-    # Input for every test example
-    test_set = data_set[train_idx:train_idx+test_idx,1:]
-    norm_test_images = np.divide(test_set, 255)
+    else:
+        # Calculating test variables
+        train_idx = math.floor(train_portion * n_rows)
+        test_idx = math.floor((1-train_portion)*n_rows)
 
-    # Label for every test example
-    test_labels = data_set[train_idx:train_idx+test_idx, :1].astype(np.int64)
-    norm_test_labels = [digit_to_vector(digit, 9) for digit in test_labels]
+        # Input for every test example
+        test_set = data_set[train_idx:train_idx+test_idx,1:]
+        norm_test_images = np.divide(test_set, 255)
+
+        # Label for every test example
+        test_labels = data_set[train_idx:train_idx+test_idx, :1].astype(np.int64)
+        norm_test_labels = [digit_to_vector(digit, 9) for digit in test_labels]
 
     return norm_test_images, norm_test_labels
 
@@ -153,7 +167,7 @@ def mnist_recognize(n_components, hidden_length = 10, eta = 0.01, threshold = 2e
     data_set = pd.read_csv('train.csv', sep=',', header=0, dtype=np.float64).values
 
     # Normalizing images to grayscale and labels to vectors
-    norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows)
+    norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows, train_portion=0.7)
 
     # Calculating principal components
     norm_train_images, feat_v = dimensionality_reduce(data = norm_train_images, n_components =  n_components)
@@ -165,36 +179,50 @@ def mnist_recognize(n_components, hidden_length = 10, eta = 0.01, threshold = 2e
     model = mlp.Model(i_neurons = n_components, h_neurons = hidden_length, o_neurons = 10)
     model.backpropagation(X = norm_train_images, Y = norm_train_labels, eta = eta, threshold = threshold)
 
-    ''' Keggle submission testing
-    Testing
-    test_set = pd.read_csv('test.csv', sep=',', header=0).values
-    norm_test_set = np.divide(test_set, 255)
 
-    for p in norm_test_set:
-        x_p = p[:]
-        obtained_class = model.classify(x_p)
+    ''' Benchmark testing
     '''
-
-    norm_test_images, norm_test_labels = normalized_mnist_test_data(data_set, n_rows = n_rows)
+    norm_test_images, norm_test_labels = normalized_mnist_test_data(data_set, n_rows = n_rows, train_portion=0.7)
 
     # Reducing dimensionality for the train set
     norm_test_images,_ = dimensionality_reduce(norm_test_images, n_components, feat_v)
 
     _, accuracy = mnist_test(model, norm_test_images, norm_test_labels)
 
+
+    ''' Keggle submission testing
+    '''
+    test_set = pd.read_csv('test.csv', sep=',', header=0).values
+    #norm_test_set = np.divide(test_set, 255)
+    norm_test_images, _ = normalized_mnist_test_data(test_set, validation=False)
+    norm_test_images, _ = dimensionality_reduce(norm_test_images, n_components, feat_v)
+
+    for i, p in enumerate(norm_test_images):
+        x_p = p[:]
+        obtained_class = vector_to_digit(model.classify(x_p))
+
+        print(i+1,',',obtained_class, sep='')
+
     return accuracy
 
 
-def benchmark():
-    nc = 100
+def components_benchmark():
+    nc = 70
     while nc > 0:
         print('N components: ', nc)
         start_time = time.time()
-        accuracy = mnist_recognize(n_components= nc, hidden_length= 10, eta=0.01, n_rows = 1000, threshold=5e-2)
+        accuracy = mnist_recognize(n_components= nc, hidden_length= 10, eta=0.01, n_rows = 3000, threshold=7e-2)
         end_time = time.time()
         duration = (end_time - start_time) / (60) # in minutes
         print('Taxa de acerto: ', accuracy)
         print('Duração: ', duration)
         nc -= 30
 
-benchmark()
+#components_benchmark()
+
+start_time = time.time()
+accuracy = mnist_recognize(n_components= 100, hidden_length= 10, eta=0.01, n_rows = 42000, threshold=1e-3)
+end_time = time.time()
+duration = (end_time - start_time) / (60) # in minutes
+print('Taxa de acerto: ', accuracy)
+print('Duração: ', duration)
