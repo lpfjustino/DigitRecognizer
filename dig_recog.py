@@ -27,24 +27,64 @@ def plot(data_set, norm_labels):
         time.sleep(10)
 
 
-def normalized_mnist_train_data(data_set, n_rows = 500, train_portion = 0.7):
-    train_idx = math.floor(train_portion * n_rows)
+'''
+    Auxiliary function that normalizing the input transforming from grayscale (0-255) to MLP's input (0-1) and
+    adjustment of output to be a vector insted of a digit
+        Parameters:
+            data_set : (M x F) matrix containing M rows of images and F columns of features
+            n_rows : number of examples from the data_set that will be used
+            train_portion : fraction of the cut data_set that will be used for training (0-1)
+            validation :    boolean variable that indicates if the execution is in validation phase (benchmark purposes)
+                            or production. In the second case we have no cut of the data_set for the training set, for
+                            there are unique examples destined to testing.
+        Returns:
+            norm_train_images : normalized train images
+            norm_train_images : normalized train labels
+'''
+def normalized_mnist_train_data(data_set, n_rows = 500, train_portion = 0.7, validation=True):
+    if validation == False:
+        # Input for every train example
+        train_set = data_set[:, 1:]
 
-    # Input for every train example
-    train_set = data_set[:train_idx, 1:]
-    norm_train_images = train_set / 255
+        # Label for every train example
+        train_labels = data_set[:, :1].astype(np.int64)
 
-    # Label for every train example
-    train_labels = data_set[:train_idx, :1].astype(np.int64)
+
+    else:
+        train_idx = math.floor(train_portion * n_rows)
+
+        # Input for every train example
+        train_set = data_set[:train_idx, 1:]
+
+        # Label for every train example
+        train_labels = data_set[:train_idx, :1].astype(np.int64)
+
+    # Normalization of the
+    norm_train_images = np.divide(train_set, 255)
     norm_train_labels = [digit_to_vector(digit, 9) for digit in train_labels]
 
     return norm_train_images, norm_train_labels
 
-
+'''
+    Auxiliary function that normalizing the input transforming from grayscale (0-255) to MLP's input (0-1)
+        Parameters:
+            data_set : (M x F) matrix containing M rows of images and F columns of features
+            n_rows : number of examples from the data_set that will be used
+            train_portion : fraction of the cut data_set that will be used for training (0-1)
+            validation :    boolean variable that indicates if the execution is in validation phase (benchmark purposes)
+                            or production. In the second case we have no labels and there's no train portion on the
+                            data_set.
+        Returns:
+            norm_train_images : normalized train images
+            norm_train_images : normalized train labels
+'''
 def normalized_mnist_test_data(data_set, n_rows = 500, train_portion = 0.7, validation=True):
     # We don't have labels or train/test portions on production execution
     if validation == False:
-        norm_test_images = np.divide(data_set, 255)
+        # Input for every test example
+        test_set = data_set
+
+        # Label for every test example
         norm_test_labels = None
 
     else:
@@ -54,29 +94,43 @@ def normalized_mnist_test_data(data_set, n_rows = 500, train_portion = 0.7, vali
 
         # Input for every test example
         test_set = data_set[train_idx:train_idx+test_idx,1:]
-        norm_test_images = np.divide(test_set, 255)
 
         # Label for every test example
         test_labels = data_set[train_idx:train_idx+test_idx, :1].astype(np.int64)
         norm_test_labels = [digit_to_vector(digit, 9) for digit in test_labels]
 
+    norm_test_images = np.divide(test_set, 255)
+
     return norm_test_images, norm_test_labels
 
 
+'''
+    Performs a test on a given trained model given a set of images and labels
+        Parameters:
+            model : trained MLP model
+            norm_test_images : (M x F) matrix containing M rows of images and F columns of features
+            norm_test_labels : (M x 1) matrix containing M rows of labels
+        Returns:
+            obtained : array of all obtained classes
+            accuracy : percentage of classes that the model predicted correctly
+'''
 def mnist_test(model, norm_test_images, norm_test_labels):
     count = 0
+    obtained = []
     for i, p in enumerate(norm_test_images):
         x_p = p[:]
         y_p = norm_test_labels[i]
 
         expected_class = vector_to_digit(y_p)
         obtained_class = vector_to_digit(model.classify(x_p))
+        obtained.append(obtained_class)
+
         if expected_class == obtained_class:
             count += 1
 
     accuracy = count/len(norm_test_images)
 
-    return count, accuracy
+    return obtained, accuracy
 
 
 '''
@@ -162,12 +216,24 @@ def dimensionality_reduce(data, n_components = 100, feat_v = None):
     return pc, v
 
 
+'''
+    Main function that's called to classify the MNIST dataset
+        Parameters:
+            n_components: number of principal components that we desire to use
+            hidden_length : number of neurons on the hidden layer
+            eta : size of the step given in the gradient direction
+            threshold : minimum error acceptable
+            n_rows : cut of the data_set rows that we desire to use
+        Returns:
+            accuracy : percentage of classes that the model predicted correctly
+'''
 def mnist_recognize(n_components, hidden_length = 10, eta = 0.01, threshold = 2e-2, n_rows = 500):
     # Reading train set
     data_set = pd.read_csv('train.csv', sep=',', header=0, dtype=np.float64).values
 
     # Normalizing images to grayscale and labels to vectors
-    norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows, train_portion=0.7)
+    norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows, train_portion=0.7,
+                                                                       validation=False)
 
     # Calculating principal components
     norm_train_images, feat_v = dimensionality_reduce(data = norm_train_images, n_components =  n_components)
@@ -221,7 +287,7 @@ def components_benchmark():
 #components_benchmark()
 
 start_time = time.time()
-accuracy = mnist_recognize(n_components= 100, hidden_length= 10, eta=0.01, n_rows = 42000, threshold=1e-3)
+accuracy = mnist_recognize(n_components= 100, hidden_length= 10, eta=0.01, n_rows = 42000, threshold=3.5e-2)
 end_time = time.time()
 duration = (end_time - start_time) / (60) # in minutes
 print('Taxa de acerto: ', accuracy)
