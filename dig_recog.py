@@ -229,7 +229,7 @@ def dimensionality_reduce(data, n_components = 100, feat_v = None):
 '''
 def mnist_recognize(n_components, hidden_length = 10, eta = 0.01, threshold = 2e-2, n_rows = 500):
     # Reading train set
-    data_set = pd.read_csv('train.csv', sep=',', header=0, dtype=np.float64).values
+    data_set = pd.read_csv('kaggle/train.csv', sep=',', header=0, dtype=np.float64).values
 
     # Normalizing images to grayscale and labels to vectors
     norm_train_images, norm_train_labels = normalized_mnist_train_data(data_set, n_rows = n_rows, train_portion=0.7,
@@ -258,7 +258,7 @@ def mnist_recognize(n_components, hidden_length = 10, eta = 0.01, threshold = 2e
 
     ''' Keggle submission testing
     '''
-    test_set = pd.read_csv('test.csv', sep=',', header=0).values
+    test_set = pd.read_csv('kaggle/test.csv', sep=',', header=0).values
     #norm_test_set = np.divide(test_set, 255)
     norm_test_images, _ = normalized_mnist_test_data(test_set, validation=False)
     norm_test_images, _ = dimensionality_reduce(norm_test_images, n_components, feat_v)
@@ -287,7 +287,7 @@ def components_benchmark():
 #components_benchmark()
 
 start_time = time.time()
-accuracy = mnist_recognize(n_components= 100, hidden_length= 10, eta=0.01, n_rows = 42000, threshold=3.5e-2)
+accuracy = mnist_recognize(n_components= 100, hidden_length= 500, eta=0.01, n_rows = 42000, threshold=3.5e-2)
 end_time = time.time()
 duration = (end_time - start_time) / (60) # in minutes
 print('Taxa de acerto: ', accuracy)

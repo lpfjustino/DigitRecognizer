@@ -106,7 +106,7 @@ class Model:
                 o_p = fwd.f_o_net_o_pk
                 delta_p = y_p - o_p
 
-                sqerror += np.sum(delta_p) ** 2
+                sqerror += np.sum(delta_p ** 2)
 
                 # Calculation of output layer's delta for a pattern
                 delta_o_p = delta_p * fwd.df_o_dnet_o_pk
